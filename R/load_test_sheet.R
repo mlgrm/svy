@@ -1,0 +1,8 @@
+options(GoogleAuth=getGoogleAuth(readRDS("data/passwd")["login"],
+                                 readRDS("data/passwd")["passwd"],
+                                 service="wise"))
+options(GoogleDocsConnection=getGoogleDocsConnection(getOption("GoogleAuth")))
+con <- getOption("GoogleDocsConnection")
+wb <- getWorkbook("unhcr")
+sh <- getWorksheets(wb,con)[["types"]]
+df <- getSheet(wb,"simple")
