@@ -1,5 +1,6 @@
-options(GoogleAuth=getGoogleAuth(readRDS("data/passwd")["login"],
-                                 readRDS("data/passwd")["passwd"],
+library(RGoogleDocs)
+options(GoogleAuth=getGoogleAuth(readRDS("~/svy/data/passwd")["login"],
+                                 readRDS("~/svy/data/passwd")["passwd"],
                                  service="wise"))
 options(GoogleDocsConnection=getGoogleDocsConnection(getOption("GoogleAuth")))
 con <- getOption("GoogleDocsConnection")

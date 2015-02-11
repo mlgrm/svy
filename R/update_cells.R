@@ -1,7 +1,7 @@
-options(svy.entry.template=paste(readLines(file("data/entry_template.xml")),
+options(svy.entry.template=paste(readLines(file("~/svy/data/entry_template.xml")),
                                  collapse="\n"))
 
-options(svy.feed.template=paste(readLines(file("data/feed_template.xml")),
+options(svy.feed.template=paste(readLines(file("~/svy/data/feed_template.xml")),
                                 collapse="\n"))
 
 updateCells <- function(sheet, vals) {
