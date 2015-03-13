@@ -38,7 +38,7 @@ gmeans <- list(means=gmeans.fn)
 gpoll.counts <- function(v,strat=NULL,N=NULL) table(v)
 
 gpoll.frac <- function(v,strat=NULL,N=NULL){
-  if(!is.null(strat)) 
+  if(!is.null(strat))
     (sapply(split(v,strat),gpoll.frac)%*%N)[,1]/sum(N) else
       table(v)/length(v[!is.na(v)])
 }
@@ -52,11 +52,11 @@ gpoll.frac <- function(v,strat=NULL,N=NULL){
     vl <- split(v,strat)
     n <- sapply(vl,function(v)
       if(is.matrix(v) || is.data.frame(v))
-        n <- nrow(v[!is.na(v[,1]),]) else 
+        n <- nrow(v[!is.na(v[,1]),]) else
           n <- length(v[!is.na(v)]))
     se <- sqrt((sapply(vl,var)%*%(N*(N-n)/(n-1)))[,1])/sum(N)
   }else{
-    if(is.matrix(v) || is.data.frame(v)) n <- nrow(v[!is.na(v[,1]),]) else 
+    if(is.matrix(v) || is.data.frame(v)) n <- nrow(v[!is.na(v[,1]),]) else
       n <- length(v[!is.na(v)])
     se <- sqrt(var(v)/n)
     if(!is.null(N)) se <- se*sqrt((N-n)/(N-1))
@@ -66,27 +66,42 @@ gpoll.frac <- function(v,strat=NULL,N=NULL){
 
 gpoll.moe <- function(v,strat=NULL,N=NULL) .prop.moe(v,gpoll.frac,strat,N)
 
-gpoll <- list(counts=gpoll.counts, proportion=gpoll.frac,"margin of error"=gpoll.moe)
+gpoll <- list(
+  counts=gpoll.counts,
+  proportion=gpoll.frac,
+  "margin of error"=gpoll.moe
+)
 
 
-gmulti.counts <- function(m,strat=NULL,N=NULL, metadata=qs){
-  matchnames <- as.character(metadata$text[match(colnames(m),metadata$name)])
-  colnames(m) <- ifelse(is.na(matchnames),colnames(m),matchnames)
+gmulti.counts <- function(m,strat=NULL,N=NULL, choices=attributes(m)$choices,
+                          metadata=getOption("svy.metadata",NULL)){
+  if(is.null(choices)){
+    matchnames <- as.character(metadata$text[match(colnames(m),metadata$name)])
+    colnames(m) <- ifelse(is.na(matchnames),colnames(m),matchnames)
+  } else colnames(m) <- choices
+#   browser()
   colSums(m,na.rm=TRUE)
 }
-# take a matrix of multiple responses and return a table with the fraction of 
+# take a matrix of multiple responses and return a table with the fraction of
 # respondents saying yes to each, plus a table of error margins
-gmulti.frac <- function(m,strat=NULL,N=NULL, metadata=qs){
-  browser(expr=is(tryCatch(is.data.frame(m),error=identity),"error"))
-  matchnames <- as.character(metadata$text[match(colnames(m),metadata$name)])
-  colnames(m) <- ifelse(is.na(matchnames),colnames(m),matchnames)
+gmulti.frac <- function(m,strat=NULL,N=NULL, choices=attributes(m)$choices,
+                        metadata=getOption("svy.metadata",NULL)){
+  if(is.null(choices)){
+    browser(expr=is(tryCatch(is.data.frame(m),error=identity),"error"))
+    matchnames <- as.character(metadata$text[match(colnames(m),metadata$name)])
+    colnames(m) <- ifelse(is.na(matchnames),colnames(m),matchnames)
+  } else colnames(m) <- choices
   if(!is.null(strat))
     (sapply(split(as.data.frame(m),strat),gmulti.frac)%*%N)[,1]/sum(N) else
       sapply(m,function(c)sum(c,na.rm=TRUE)/length(c[!is.na(c)]))
 }
 
-gmulti.moe  <- function(m,strat=NULL,N=NULL, metadata=qs) 
-  .prop.moe(m,gmulti.frac,strat,N)
+gmulti.moe  <- function(m,strat=NULL,N=NULL, choices=attributes(m)$choices,
+                        metadata=getOption("svy.metadata",NULL)){
+  moe <- .prop.moe(m,gmulti.frac,strat,N)
+  if(!is.null(choices)) names(moe) <- choices
+  moe
+}
 
 gmulti <- list(
   counts=gmulti.counts,
@@ -94,8 +109,10 @@ gmulti <- list(
   "margin of error"=gmulti.moe
 )
 
+gdate <- list(counts=function(c,...)table(c))
+
 # take a list of vectors or data frames, a list of grouping factors, and
-# a list of functions and apply each function to each grouping of each data 
+# a list of functions and apply each function to each grouping of each data
 # element
 drill <- function(dat,grpgs,f=gpoll,title=NULL,strat=NULL,N=NULL,...){
   if(!is.list(dat) || is.data.frame(dat)) dat <- list(dat)
@@ -104,11 +121,15 @@ drill <- function(dat,grpgs,f=gpoll,title=NULL,strat=NULL,N=NULL,...){
   l <- lapply(dat,function(v){
     #overall=lapply(f,function(f1)as.table(f1(v))),
     if(is.factor(v)||is.data.frame(v)) v <- droplevels(v)
-    if(is.matrix(v)) v <- as.data.frame(v)
+    if(is.matrix(v)){
+      choices <- attributes(v)$choices
+      v <- as.data.frame(v)
+      attributes(v)$choices <- choices
+    }
     list(by={
       lapply(grpgs,function(g){
         if(is.factor(g)) g <- droplevels(g)
-        browser(expr=(if(is.data.frame(v))nrow(v)else length(v))!=length(g))
+#         browser(expr=(if(is.data.frame(v))nrow(v)else length(v))!=length(g))
         vl <- c(split(v,g),overall=list(v))
         if(!is.null(strat)){
           stratl <- c(split(strat,g,drop=TRUE),overall=list(strat))
@@ -131,7 +152,7 @@ drill <- function(dat,grpgs,f=gpoll,title=NULL,strat=NULL,N=NULL,...){
 }
 
 drillplex <- function(dat)
-  
+
   moe.mean <- function(v,c=DOC)qnorm(c)*sd(v)/sqrt(length(v))
 
 # apply a function recursively to splits of the first column by each successive
@@ -163,11 +184,11 @@ facetl <- function(lc,fs){
 setSheet.default <- function(type,name,
                              wb=getOption("table.display.default.workbook")){
   if(type !="xlsx") return(NULL)
-  if(getOption("table.display.single.sheet",default=FALSE)){ 
+  if(getOption("table.display.single.sheet",default=FALSE)){
     sheet <- getOption("table.display.sheet")
     return(sheet)
   }
-  
+
   currentRow <<- 1
   createSheet(wb,name)
 }
@@ -190,7 +211,7 @@ print.title <- function(title,type,sheet=NULL,
 }
 
 i <- 0
-print_nested_tables <- 
+print_nested_tables <-
   function(l,
            title=NULL,
            name=NULL,
@@ -227,10 +248,10 @@ print_nested_tables <-
           addDataFrame(l,sheet,startRow = currentRow)
           currentRow <- currentRow + ifelse(is.null(l),1,nrow(l)) + 1
           r <- createRow(sheet,rowIndex = currentRow)
-          currentRow <- currentRow + 1             
+          currentRow <- currentRow + 1
         }
       } else
-        for(i in 1:length(l)) 
+        for(i in 1:length(l))
           currentRow <- print_nested_tables(l[[i]],
                                             name=paste(name,names(l)[[i]]),
                                             type=type,
@@ -262,10 +283,10 @@ print_nested_tables <-
                currentRow <- currentRow + 1
                addDataFrame(l,sheet,startRow = currentRow)
                # browser(expr=(!length(nrow(l))))
-               currentRow <- currentRow + 
+               currentRow <- currentRow +
                  ifelse(is.null(l) || is.vector(l),1,nrow(l)) + 1
                r <- createRow(sheet,rowIndex = currentRow)
-               currentRow <- currentRow + 1             
+               currentRow <- currentRow + 1
              },
              stop("unknown display type")
       )
@@ -276,7 +297,7 @@ print_nested_tables <-
 print_nested_tables_row <- function(l,name=""){
   if(is.list(l)){
     #     cat("#### ",name,"\n")
-    invisible(mapply(print_nested_tables,l,paste(name,names(l)))) 
+    invisible(mapply(print_nested_tables,l,paste(name,names(l))))
   } else {
     i <<-i+1
     cat("<td>",name,"\n")
@@ -290,7 +311,7 @@ print_nested_tables_row <- function(l,name=""){
 #     #     cat("#### ",name,"\n")
 #     lapply(
 #       mapply(get_nested_tables,l1,name=paste(name,names(l1))),
-#       function(e)if(is.list(e))unlist(e,recursive=FALSE))    
+#       function(e)if(is.list(e))unlist(e,recursive=FALSE))
 #   } else {
 #     i <<-i+1
 #     list(name=name, table=xtable(l1,digits=6))

@@ -4,9 +4,9 @@ library(plyr)
 datsum <- function(dat,ql=NULL){
   data.frame(
     name=colnames(dat),
-    #   long.name=ifelse(colnames(dat) %in% ql[,2], 
+    #   long.name=ifelse(colnames(dat) %in% ql[,2],
     #                    as.character(ql[,1])[match(colnames(dat),ql[,2])],""),
-    text=ifelse(colnames(dat) %in% ql$name, 
+    text=ifelse(colnames(dat) %in% ql$name,
                 strtrim(
                   as.character(ql$text)[match(colnames(dat),ql$name)],80
                 ),""),
@@ -16,23 +16,23 @@ datsum <- function(dat,ql=NULL){
                                     integer="integer",
                                     factor={
                                       if(grepl("^Q[0-9]+R[0-9]+$",n)){
-                                        "multiple response" 
+                                        "multiple response"
                                       }else if(grepl("^Q.+X.*$",n) ||
                                                  length(levels(c))>0.25*length(c)){
                                         "freeform"
                                       }else "multiple choice"},
                                     logical={
                                       if(grepl("^Q[0-9]+R[0-9]+$",n)){
-                                        "multiple response" 
+                                        "multiple response"
                                       }else "other"
                                     },
                                     "other"
     ),dat,colnames(dat)),
     choices=sapply(dat,function(c)
-      switch(class(c)[1], 
+      switch(class(c)[1],
              factor=paste0("\"",levels(c),"\"",collapse = ", "), "")),
     `missing vals`=sapply(dat,function(c)sum(is.na(c)/nrow(dat))),
-    
+
     summary=vapply(dat,function(c){
       s <- summary(c)
       s <- paste(names(s),s,sep=": ",collapse=", ")
@@ -45,6 +45,7 @@ datsum <- function(dat,ql=NULL){
 Sys.setlocale('LC_ALL','C')
 cleandat <- function(dat){
   as.data.frame(lapply(dat,function(c){
+#     browser(expr=(class(c)=="integer"))
     switch(class(c)[1],
            factor={
              levels(c) <- sub("\\s+$","",levels(c))
@@ -67,8 +68,8 @@ cleandat <- function(dat){
              c[c=="98"] <- NA
              c[c=="n/a"] <- NA
              c <- droplevels(c)
-             if(all.is.numeric(levels(c))) c <- as.numeric(levels(c))[c]  
-             if(all(grepl("^(true|false)$",levels(c),ignore.case = T)) |
+             if(all.is.numeric(levels(c))) c <- as.numeric(levels(c))[c]
+             if(all(grepl("^(true|false)$",levels(c),ignore.case = T)) ||
                   all(grepl("^(T|F)$",levels(c)))) c <- as.logical(c)
              c
            },
@@ -129,7 +130,7 @@ t.table.list <- function(l){
 }
 
 get.mr <- function(dat,qn,tbl=qs,
-                     fmt=getOption("svy.mr.fmt", 
+                     fmt=getOption("svy.mr.fmt",
                                    default="^Q\1R([1-9]|[1-4][0-9]|77)$")){
   if(is.character(qn)) qn <- sub("[^0-9]([0-9]+).*","\\1",qn)
   mr <- as.matrix(dat[,grep(sub("\1",qn,fmt),colnames(dat))])
@@ -143,7 +144,7 @@ lookup <- function(cn,tbl=qs,name="name",label="text"){
   m
 }
 
-moe <- function(p,n,doc=NULL, N=Inf) 
+moe <- function(p,n,doc=NULL, N=Inf)
   sqrt(p*(1-p)/n*
          if(is.infinite(N)) 1 else (N-n)/(N-1))*
   if(is.null(doc)) 1 else qnorm(1-(1-doc)/2)

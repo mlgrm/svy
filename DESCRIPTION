@@ -6,3 +6,10 @@ Description: What the package does (one paragraph)
 Depends: R (>= 3.1.1)
 License: What license is it under?
 LazyData: true
+Imports:
+  Hmisc,
+  XML,
+  RGoogleDocs,
+  xtable,
+  xlsx,
+  rJava
