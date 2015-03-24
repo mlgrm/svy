@@ -129,7 +129,7 @@ drill <- function(dat,grpgs,f=gpoll,title=NULL,strat=NULL,N=NULL,...){
     list(by={
       lapply(grpgs,function(g){
         if(is.factor(g)) g <- droplevels(g)
-#         browser(expr=(if(is.data.frame(v))nrow(v)else length(v))!=length(g))
+#         browser(expr=is.matrix(g))
         vl <- c(split(v,g),overall=list(v))
         if(!is.null(strat)){
           stratl <- c(split(strat,g,drop=TRUE),overall=list(strat))

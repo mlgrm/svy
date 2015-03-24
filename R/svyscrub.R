@@ -156,7 +156,9 @@ extract.select.one <- function(r,dat,group=NULL,
                                lang=getOption("odksvy.default.lang","English")){
   col <- getcol(r$name,dat,group)
   lbl <- getlabels(r$children[[1]][["label"]],lang)
-  factor(col, levels=r$children[[1]]$name, labels=lbl, ordered = TRUE)
+  r <- factor(col, levels=r$children[[1]]$name, labels=lbl)
+  attr(r,"choices") <- lbl
+  r
 }
 
 extract.select.all.that.apply <-
@@ -212,7 +214,11 @@ summary.svy <- function(dat,lang=getOption("odksvy.default.lang","English")){
 attributes.svy <- function(s)lapply(s,attributes)
 apply.attr.svy <- function(a,s){
   a <- lapply(a,function(a1){if(!is.null(a1$dim))a1$dim[1] <- nrow(s);a1})
-  as.data.frame(mapply(function(a1,s1){attributes(s1) <- a1;s1},a,s))
+  as.data.frame(mapply(function(a1,s1){
+    browser(expr=(("factor"%in%a1$class)&& !("factor"%in%class(s1))))
+    attributes(s1) <- a1
+    s1
+    },a,s), stringsAsFactors=FALSE)
 }
 
 apply.attr.svyq <- function(a,q){
@@ -245,17 +251,18 @@ as.svy <- function(dat,tmp){
   as.data.frame(mapply(apply.attr.svyq,att,dat))
 }
 
-as.svyq <- function(col, label, ...) switch(
+as.svyq <- function(col, label=attributes(col)$label, ...) switch(
   class(col)[1],
   integer=as.svyq.integer(col,label,...),
   numeric=as.svyq.numeric(col,label,...),
   factor=as.svyq.factor(col,label,...),
-  ordered=as.svyq.factor(col,label,...),
+  ordered=as.svyq.factor(col,label,ordered=TRUE,...),
   stop("unrecognized vector class")
   )
 
-as.svyq.factor <- function(col, label, choices=levels(col)){
-  ordered(col,levels=choices)
+as.svyq.factor <- function(col, label, ordered=FALSE,
+                           choices=levels(col)){
+  factor(col,levels=choices)
   attributes(col)$label <- label
   attributes(col)$type <- "select one"
   col
@@ -272,3 +279,62 @@ as.svyq.integer <- function(col, label){
   attributes(col)$type <- "integer"
   col
 }
+
+split.svyq <- function(x, f, ...){
+  lapply(split(x,f,...),as.svyq,x)
+}
+
+split.svy <- function(x, f, ...){
+  lapply(split(x,f,...),as.svy,x)
+}
+
+as.data.frame.svy <- function(x){
+  l <- mapply(function(c,n){
+    if(is.matrix(c)){
+      class(c) <- "matrix"
+      df <- as.data.frame(c)
+      colnames(df) <- attributes(c)$choices
+      df
+    } else {
+      df <- data.frame(c)
+      colnames(df) <- n
+      df
+    }
+  },x,colnames(x),SIMPLIFY=FALSE)
+  do.call(cbind,l)
+}
+
+choices.svyq <- function(x){
+  switch(attributes(x)$type,
+         "select one"=levels(x),
+         "select all that apply"=attributes(x)$choices,
+         NULL
+  )
+}
+# consolidate choices into a smaller number of choices
+cons.choices <- function(q,l){
+  choicenames <- ifelse(names(l)!="",names(l),
+                        ifelse(sapply(l,function(e)length(e)==1),
+                               sapply(l,function(e)attributes(q)$choices[e]),
+                               NA))
+  if(any(is.na(choicenames))) stop("consolidated choices must be named")
+  if(is.matrix(q)){
+    r <- sapply(l,function(cs){
+      if(length(cs)==1) q[,cs] else
+      rowSums(q[,cs])>0
+    })
+    r <- apply.attr.svyq(attributes(q),r)
+    attributes(r)$choices <- choicenames
+    r
+  } else {
+    lvl <- rep(NA,length(levels(q)))
+    for(i in 1:length(l))
+      if(names(l)[i]=="") lvl[l[[i]]] <- levels(q)[l[[i]]] else
+        lvl[l[[i]]] <- names(l)[i]
+    levels(q) <- lvl
+    attributes(q)$choices <- levels(q)
+    q
+  }
+}
+
+clean.svy <- function(svy)apply.attr.svy(attributes.svy(svy),cleandat(svy))

@@ -45,7 +45,8 @@ datsum <- function(dat,ql=NULL){
 Sys.setlocale('LC_ALL','C')
 cleandat <- function(dat){
   as.data.frame(lapply(dat,function(c){
-#     browser(expr=(class(c)=="integer"))
+#      browser(expr=(class(c)=="integer"))
+    if(is.integer(c)) c <- pres.svyq(c,as.numeric)
     switch(class(c)[1],
            factor={
              levels(c) <- sub("\\s+$","",levels(c))
@@ -75,13 +76,14 @@ cleandat <- function(dat){
            },
            numeric={
              c[c<0] <- NA
+             c[c==98] <- NA # this is royally stupid
              c
            },
            {
              c
            }
     )
-  }))
+  }),stringsAsFactors=FALSE)
 }
 
 #' take a data.frame and a list of vectors of column names or indices and
@@ -148,3 +150,14 @@ moe <- function(p,n,doc=NULL, N=Inf)
   sqrt(p*(1-p)/n*
          if(is.infinite(N)) 1 else (N-n)/(N-1))*
   if(is.null(doc)) 1 else qnorm(1-(1-doc)/2)
+
+# functions for regression
+fwd.diff <- function(c){
+  m <- t(sapply(c,function(a)1:(length(levels(a))-1)<as.integer(a)))
+  browser(expr=("Female"%in%levels(c)[-1]))
+  attributes(m)$choices <- levels(c)[-1]
+  attributes(m)$label <- attributes(c)$label
+  I(m)
+}
+
+
