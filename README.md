@@ -1,4 +1,7 @@
 # svy
+
+this repo is no longer current.  see svyr.
+
 tools for importing surveys from ODK and analysing them in R
 
 combine the form specification in json with the csv data output to create a data frame with one column for each question.  also, some automatic summary functions for each question type.
